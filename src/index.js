@@ -11,7 +11,7 @@ export const activeBindings = new WeakMap();
  * @param {Object} descriptor The descriptor of the property to be bound
  * @param {Object} currentValue The current value of the property
  */
-function bindClientInstance(context, property, descriptor, currentValue) {
+function bindInstanceProperty(context, property, descriptor, currentValue = undefined) {
     let getter = descriptor.get;
     // already bound - nothing to do
     if (activeBindings.has(getter)) {
@@ -20,6 +20,9 @@ function bindClientInstance(context, property, descriptor, currentValue) {
 
     // Use an existing getter if present
     if (!getter) {
+        if (currentValue === undefined){
+            currentValue = descriptor.value
+        }
         getter = function () {
             return currentValue;
         };
@@ -62,77 +65,24 @@ function bindClientInstance(context, property, descriptor, currentValue) {
  * @param {Object} prototype The Class prototype containing the property to bind
  * @param {String} property The name of the property to bind
  */
-export function bindable(prototype, property) {
+export function bindable(property) {
 
-    // Mixin
-    if (!activeBindings.has(prototype)) {
-        var notifier = new PropertyChangeNotifier();
-        Object.assign(prototype, notifier);
-        activeBindings.set(prototype, true);
-    }
+    return prototype =>{
+        // Mixin
+        if (!activeBindings.has(prototype)) {
+            var notifier = new PropertyChangeNotifier();
+            Object.assign(prototype, notifier);
+            activeBindings.set(prototype, true);
+        }
 
-    const descriptor = {
-        set: value => {
-            bindClientInstance(this, property, descriptor, value);
-        },
-        configurable: true,
-        enumerable: true
+        const descriptor = {
+            set: value => {
+                bindInstanceProperty(this, property, descriptor, value);
+            },
+            configurable: true,
+            enumerable: true
+        };
+
+        Object.defineProperty(prototype, property, descriptor);
     };
-
-    Object.defineProperty(prototype, property, descriptor);
-}
-
-export function bind(options, targetSource) {
-    const notifier = activeBindings.get(targetSource) || new PropertyChangeNotifier();
-    let bindingId;
-    let property;
-    let targetProperty;
-    let interceptor;
-    let inclusions = {};
-
-    if (options && options.splice) {
-        const len = options.length;
-        let i = 0;
-        for (; ~~i < ~~len; i++) {
-            const thatOption = options[i];
-            property = thatOption.property;
-            targetProperty = thatOption.targetProperty;
-            interceptor = thatOption.interceptor;
-            bindingId = addBinding(notifier, thatOption.source, property);
-            if (!inclusions[bindingId]) {
-                inclusions[bindingId] = [];
-            }
-            inclusions[bindingId].push({property, targetProperty, interceptor});
-        }
-    }
-    else {
-        property = options.property;
-        targetProperty = options.targetProperty;
-        interceptor = options.interceptor;
-        bindingId = addBinding(notifier, options.source, property);
-        inclusions[bindingId] = [{property, targetProperty, interceptor}];
-    }
-
-    const notifierCallback = function (bindingId, dataSource, changes) {
-        const infos = inclusions[bindingId];
-        if (!infos) {
-            return;
-        }
-        const len = infos.length;
-        let i = 0;
-        for (; ~~i < ~~len; i++) {
-            const info = infos[i];
-            const target = changes[info.property];
-            let newValue = target.newValue;
-            if (typeof info.interceptor === 'function') {
-                newValue = info.interceptor(targetSource, info.targetProperty, newValue, target.oldValue);
-            }
-            applyValue(targetSource, info.targetProperty, newValue);
-        }
-    };
-    notifier.addCallback(notifierCallback);
-
-    activeBindings.set(targetSource, notifier);
-
-    return notifier.id;
 }
