@@ -1,0 +1,7 @@
+# build dependencies
+/node_modules
+# generated
+/coverage
+/test-reports
+.DS_Store
+.idea/
