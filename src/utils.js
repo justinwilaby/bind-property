@@ -2,69 +2,42 @@ let rollingCount = ~~0;
 export function getNextId() {
     return rollingCount++;
 }
+const callbackHash = new WeakMap();
+
 /**
- * The PropertyChangeNotifier is a base class that
- * provides a sub/pub mechanism for property change notifications
- * on the class that extends it.
- * Property changes are queued and any subscribers are
- * notified on the next frame in order to increase the
- * likeliness of data stability when numerous properties
- * change in a single call stack.
+ * The callbacks listening for
+ * property changes.
+ *
+ * @return Set
  */
-export class PropertyChangeNotifier {
-
-    /**
-     * The callbacks listening for
-     * property changes
-     *
-     * @memberof PropertyChangeNotifier#
-     * @var {Array<function>} callbacks
-     */
-
-    /**
-     * Flag indicating whether or not all notifications
-     * should be suspended.
-     *
-     * @memberof PropertyChangeNotifier#
-     * @var {boolean} suspendNotifications
-     * @default false
-     */
-
-    constructor() {
-        Object.defineProperties(this, {
-            suspendNotifications: {value: false, enumerable: true},
-            callbacks: {value: [], enumerable: true}
-        });
+export function getCallbacks() {
+    const self = this;
+    if (callbackHash.has(self)) {
+        return callbackHash.get(self);
     }
+    const callbacks = new Set();
+    callbackHash.set(self, callbacks);
 
-    /**
-     * Adds a function as a change listener.
-     * The callback will be provided
-     *
-     * @param {function} callback The callback that is notified of property changes.
-     */
-    addChangeListener(callback) {
-        const self = this;
-        const callbacks = self.callbacks;
-        const index = callbacks.indexOf(callback);
-        if (index === -1) {
-            callbacks.push(callback);
-        }
-    }
+    return callbacks;
+}
 
-    /**
-     * Removes a callback that has been previously added
-     *
-     * @param {function} callback The callback to remove
-     */
-    removeChangeListener(callback) {
-        const self = this;
-        const callbacks = self.callbacks;
-        const index = callbacks.indexOf(callback);
-        if (index !== -1) {
-            callbacks.splice(index, 1);
-        }
-    }
+/**
+ * Adds a function as a change listener.
+ * The callback will be provided
+ *
+ * @param {function} callback The callback that is notified of property changes.
+ */
+export function addChangeListener(callback) {
+    getCallbacks.call(this).add(callback);
+}
+
+/**
+ * Removes a callback that has been previously added
+ *
+ * @param {function} callback The callback to remove
+ */
+export function removeChangeListener(callback) {
+    getCallbacks.call(this).delete(callback);
 }
 
 /**
@@ -124,7 +97,9 @@ export function applyValue(targetSource, path, value) {
     }
 }
 
-let changesByBindingId = [];
+let changesByObject = new Map();
+let queue = new Set();
+
 let nextFrameId;
 
 /**
@@ -132,23 +107,23 @@ let nextFrameId;
  * notifications by pooling and then executing
  * the notification callbacks on the next tick.
  *
- * @param {int} bindingId The unique id of the bound property that changed
  * @param {Object} source The owner of the property being changed
  * @param {String} propertyName The name of the property that has changed
  * @param {Object} oldValue The value prior to the change
  * @param {Object} newValue The value after the change
  */
-export function queueNotification(bindingId, source, propertyName, oldValue, newValue) {
+export function queueNotification(source, propertyName, oldValue, newValue) {
     if (oldValue === newValue) {
         return;
     }
-    let info = changesByBindingId[bindingId];
+    let info = changesByObject.get(source);
 
     if (info === undefined) {
-        info = changesByBindingId[bindingId] = {
+        info = {
             source: source,
             changes: {}
         };
+        changesByObject.set(source, info);
     }
     const changes = info.changes;
 
@@ -156,21 +131,22 @@ export function queueNotification(bindingId, source, propertyName, oldValue, new
         oldValue: oldValue,
         newValue: newValue
     };
-
+    queue.add(source);
     if (nextFrameId) {
         return;
     }
 
-    nextFrameId = requestAnimationFrame(function () {
-        let queue = changesByBindingId; // retain a reference for processing
-        // additional property changes queued on next cycle
-        changesByBindingId = [];
+    nextFrameId = requestAnimationFrame(() => {
+        const processingQueue = queue;
+        const processingChanges = changesByObject;
+        queue = new Set();
+        changesByObject = new Map();
         nextFrameId = null; // nullify to enable queuing again
-        // sparse - for in required
-        for (let bindingId in queue) {
-            const cursor = queue[bindingId];
-            notify(cursor.source, cursor.changes);
-        }
+
+        processingQueue.forEach(source => {
+            const changes = processingChanges(source);
+            notify(source, changes);
+        });
     });
 }
 
@@ -183,9 +159,7 @@ export function queueNotification(bindingId, source, propertyName, oldValue, new
  */
 function notify(source, changes) {
     const callbacks = source.callbacks;
-    const len = callbacks.length;
-    let i = 0;
-    for (; ~~i < ~~len; i++) {
-        callbacks[i](source, changes);
-    }
+    [...callbacks].forEach(callback => {
+        callback(source, changes);
+    });
 }
