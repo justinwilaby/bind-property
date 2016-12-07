@@ -144,7 +144,7 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
         nextFrameId = null; // nullify to enable queuing again
 
         processingQueue.forEach(source => {
-            const changes = processingChanges.get(source);
+            const {changes} = processingChanges.get(source);
             notify(source, changes);
         });
     });
