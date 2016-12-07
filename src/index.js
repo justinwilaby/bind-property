@@ -70,7 +70,7 @@ export function bindable(property) {
             activeBindings.set(prototype, true);
         }
 
-        const descriptor = Object.getOwnPropertyDescriptor(prototype, property);
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, property) || {};
         // already bound - nothing to do
         if (activeBindings.has(descriptor.get)) {
             return;
