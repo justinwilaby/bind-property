@@ -1,4 +1,4 @@
-import { getNextId, queueNotification, getCallbacks, addChangeListener, removeChangeListener } from './utils';
+import {mixinNotifier, queueNotification} from './utils';
 
 const activeBindings = new WeakMap();
 
@@ -23,14 +23,11 @@ function createSetter(property, descriptor) {
                 value = descriptor.get.call(self);
             }
         }
-
-        if (value === newValue) {
+        const oldValue = value;
+        if (value === newValue || notifyPreCommit(self, {[property]: {oldValue, newValue}})) {
             return;
         }
-
-        const oldValue = value;
         value = newValue;
-
         if (self.suspendNotifications === false) {
             queueNotification(self, property, oldValue, newValue);
         }
@@ -47,6 +44,14 @@ function getPropertyValues(context) {
     return values;
 }
 
+function notifyPreCommit(source, changes) {
+    let canceled = false;
+    source.preCommitListeners.forEach(preCommitCallback => {
+        canceled = (preCommitCallback(source, changes, canceled) === false) || canceled;
+    });
+    return canceled;
+}
+
 /**
  * Structures the prototype to define a bindable property
  * on the first write when "this" is an instance of the
@@ -59,14 +64,7 @@ export function bindable(property) {
         // Mixin
         const prototype = constructor.prototype;
         if (!activeBindings.has(prototype)) {
-            Object.defineProperties(prototype, {
-                callbacks: {
-                    get: getCallbacks
-                },
-                addChangeListener: { value: addChangeListener },
-                removeChangeListener: { value: removeChangeListener },
-                suspendNotifications: { value: false, writable: true }
-            });
+            mixinNotifier(prototype);
             activeBindings.set(prototype, true);
         }
 

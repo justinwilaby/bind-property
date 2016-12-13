@@ -1,26 +1,38 @@
-let rollingCount = ~~0;
-export function getNextId() {
-    return rollingCount++;
-}
-const callbackHash = new WeakMap();
-
+const changeListeners = new WeakMap();
+const preCommitListeners = new WeakMap();
 /**
- * The callbacks listening for
+ * The changeListeners listening for
  * property changes.
  *
  * @return Set
  */
-export function getCallbacks() {
+export function getChangeListeners() {
     const self = this;
-    if (callbackHash.has(self)) {
-        return callbackHash.get(self);
+    if (changeListeners.has(self)) {
+        return changeListeners.get(self);
     }
     const callbacks = new Set();
-    callbackHash.set(self, callbacks);
+    changeListeners.set(self, callbacks);
 
     return callbacks;
 }
 
+/**
+ * The changeListeners listening for
+ * pre commit property changes.
+ *
+ * @return Set
+ */
+export function getPreCommitListeners() {
+    const self = this;
+    if (preCommitListeners.has(self)) {
+        return preCommitListeners.get(self);
+    }
+    const callbacks = new Set();
+    preCommitListeners.set(self, callbacks);
+
+    return callbacks;
+}
 /**
  * Adds a function as a change listener.
  * The callback will be provided
@@ -28,7 +40,7 @@ export function getCallbacks() {
  * @param {function} callback The callback that is notified of property changes.
  */
 export function addChangeListener(callback) {
-    getCallbacks.call(this).add(callback);
+    getChangeListeners.call(this).add(callback);
 }
 
 /**
@@ -37,7 +49,26 @@ export function addChangeListener(callback) {
  * @param {function} callback The callback to remove
  */
 export function removeChangeListener(callback) {
-    getCallbacks.call(this).delete(callback);
+    getChangeListeners.call(this).delete(callback);
+}
+
+/**
+ * Adds a function as a change listener.
+ * The callback will be provided
+ *
+ * @param {function} callback The callback that is notified of property changes.
+ */
+export function addPreCommitListener(callback) {
+    getPreCommitListeners.call(this).add(callback);
+}
+
+/**
+ * Removes a callback that has been previously added
+ *
+ * @param {function} callback The callback to remove
+ */
+export function removePreCommitListener(callback) {
+    getPreCommitListeners.call(this).delete(callback);
 }
 
 /**
@@ -66,9 +97,9 @@ export function applyValue(targetSource, path, value) {
     // Check for deep object references
     if (!simple) {
         const paths = path.split('.');
-        const len = paths.length;
-        let i = 0;
-        for (; ~~i < ~~len; i++) {
+        const len = ~paths.length;
+        let i = ~0;
+        for (; i < len; i++) {
             let fragment = paths[i];
             context = target;
             if (i !== len) {
@@ -105,7 +136,7 @@ let nextFrameId;
 /**
  * Function used to process property change
  * notifications by pooling and then executing
- * the notification callbacks on the next tick.
+ * the notification changeListeners on the next tick.
  *
  * @param {Object} source The owner of the property being changed
  * @param {String} propertyName The name of the property that has changed
@@ -127,10 +158,7 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
     }
     const changes = info.changes;
 
-    changes[propertyName] = {
-        oldValue: oldValue,
-        newValue: newValue
-    };
+    changes[propertyName] = {oldValue, newValue};
     queue.add(source);
     if (nextFrameId) {
         return;
@@ -150,16 +178,32 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
     });
 }
 
+export function mixinNotifier(prototype) {
+    Object.defineProperties(prototype, {
+        changeListeners: {
+            get: getChangeListeners
+        },
+
+        preCommitListeners: {
+            get: getPreCommitListeners
+        },
+        addChangeListener: {value: addChangeListener},
+        removeChangeListener: {value: removeChangeListener},
+        addPreCommitListener: {value: addPreCommitListener},
+        removePreCommitListener: {value: removePreCommitListener},
+        suspendNotifications: {value: false, writable: true}
+    });
+}
+
 /**
- * Notifies all callbacks that a property has changed.
+ * Notifies all changeListeners that a property has changed.
  *
  * @param {Object} source The owner of the property
  * @param {Object} changes The details of property changes that
  * occurred on the context
  */
 function notify(source, changes) {
-    const callbacks = source.callbacks;
-    [...callbacks].forEach(callback => {
+    source.changeListeners.forEach(callback => {
         callback(source, changes);
     });
 }
