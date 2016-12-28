@@ -1,4 +1,4 @@
-import {mixinNotifier, queueNotification} from './utils';
+import {mixinNotifier, queueNotification, getChangeListeners} from './utils';
 
 const activeBindings = new WeakMap();
 
@@ -14,6 +14,7 @@ function createSetter(property, descriptor) {
 
     return function (newValue) {
         const self = this;
+        const suspendNotifications = self.suspendNotifications;
         let value = getPropertyValues(self)[property];
         // Honor an existing setter if any
         if (typeof descriptor.set === 'function') {
@@ -28,7 +29,7 @@ function createSetter(property, descriptor) {
             return;
         }
         value = newValue;
-        if (self.suspendNotifications === false) {
+        if (suspendNotifications === false && !getChangeListeners.call(self).values().next().done) {
             queueNotification(self, property, oldValue, newValue);
         }
         getPropertyValues(self)[property] = value;

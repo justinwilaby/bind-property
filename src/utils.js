@@ -97,8 +97,8 @@ export function applyValue(targetSource, path, value) {
     // Check for deep object references
     if (!simple) {
         const paths = path.split('.');
-        const len = ~paths.length;
-        let i = ~0;
+        const len = ~~paths.length;
+        let i = ~~0;
         for (; i < len; i++) {
             let fragment = paths[i];
             context = target;
