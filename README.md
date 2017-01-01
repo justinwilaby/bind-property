@@ -155,8 +155,12 @@ bindableClassInstance.removePreCommitListener(callback);
 **callback**  
 Required. The function to remove.
 
-##getChangeListeners()
-Returns an array containing all change listeners added by `addChangeListener`
+#Properties
+##changeListeners
+Read-only - an array containing all change listeners added by `addChangeListener`
 
-##getPreCommitListeners()
-Returns an array containing all pre commit listeners added by `addPreCommitListener`
+##preCommitListeners
+Read-only - an array containing all pre commit listeners added by `addPreCommitListener`
+
+##suspendNotifications
+When `true`, property change notifications are suspended and callbacks added using `addChangeListener` are not notified of property changes.  Note that callbacks added using `addPrecommitListener` are not affected.
