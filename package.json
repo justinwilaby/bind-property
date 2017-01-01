@@ -12,6 +12,8 @@
     "rollup.config.js"
   ],
   "keywords": [
+    "one",
+    "way",
     "bind",
     "property",
     "binding",
@@ -21,7 +23,8 @@
     "class",
     "observer",
     "change",
-    "notifier"
+    "notifier",
+    "observe"
   ],
   "devDependencies": {
     "babel-cli": "^6.18.0",
