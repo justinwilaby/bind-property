@@ -1,9 +1,26 @@
 {
+  "author": "Justin Wilaby",
   "name": "bind-property",
   "version": "0.1.2",
+  "description": "A lightweight javascript library for enabling bindable properties on ES6 Classes.",
   "repository": "https://github.com/justinwilaby/bind-property",
   "license": "MIT",
   "main": "build/js/bind-property.js",
+  "files": [
+    "src",
+    "build",
+    "rollup.config.js"
+  ],
+  "keywords": [
+    "binding",
+    "data",
+    "stateful",
+    "decorator",
+    "class",
+    "observer",
+    "change",
+    "notifier"
+  ],
   "devDependencies": {
     "babel-cli": "^6.18.0",
     "babel-preset-es2015-rollup": "^3.0.0",
