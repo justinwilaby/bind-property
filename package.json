@@ -12,6 +12,8 @@
     "rollup.config.js"
   ],
   "keywords": [
+    "bind",
+    "property",
     "binding",
     "data",
     "stateful",
