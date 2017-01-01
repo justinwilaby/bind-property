@@ -180,11 +180,11 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
 
 export function mixinNotifier(prototype) {
     Object.defineProperties(prototype, {
-        changeListeners: {
+        getChangeListeners: {
             get: getChangeListeners
         },
 
-        preCommitListeners: {
+        getPreCommitListeners: {
             get: getPreCommitListeners
         },
         addChangeListener: {value: addChangeListener},
