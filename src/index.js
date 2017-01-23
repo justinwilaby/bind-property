@@ -82,3 +82,4 @@ export function bindable(property) {
         });
     };
 }
+export {queueNotification};
