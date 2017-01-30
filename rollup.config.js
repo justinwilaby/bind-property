@@ -55,4 +55,3 @@ if (production && !es6) {
     );
 }
 rollup(config).then(bundle => bundle.write(bundleConfig));
-

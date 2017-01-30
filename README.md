@@ -40,7 +40,7 @@ person.gender = "Male"
 
 #Methods
 ##bindable()
-The **bindable** decorator is used to designate a property as bindable.  When a property is binable, all instances of the class will track property changes and provide mechanisms for subscribing to receive notifications when values are changed.
+The **bindable** decorator is used to designate a property as bindable.  When a property is bindable, all instances of the class will track property changes and provide mechanisms for subscribing to receive notifications when values are changed.
 ```js
 import { binable } from 'bind-property';
 @bindable('data')
@@ -63,7 +63,7 @@ Required. The name of the property to make bindable.  If the prototype of the cl
 Required. The **addChangeListener()** method registers a callback to receive a notification of a property change on a class where at least 1 property is defined as bindable using the `@bindable` decorator.
 ###addChangeListener() Syntax
 ```js
-bindableClassInstance.addChangeListener(callback);
+bindableClassInstance.addChangeListener(callback, [priority]);
 ```
 ### Parameters
 **callback**  
@@ -71,6 +71,8 @@ Required. The function to invoke when a bindable property has changed.  Adding t
 `callback` is invoked with **two arguments**:
 1. The `source` object upon which the property has changed.
 2. The `changes` object which contains keys representing the name of the property that has changed and values which contains the old and new values of the property. e.g. `{propertyName: {oldValue: theOldValue, newValue: theNewValue}`.
+**priority**
+Optional. An integer specifying the priority in which the specified callback is invoked. Higher values denote lower priority. Normally, callbacks are executed in the order in which they are registered or the bindable object. Specifying a priority allows the execution order to be changed regardless of the registration order.
 ###Example
 ```js
 import { binable } from 'bind-property';
@@ -84,11 +86,11 @@ class Person {
 }
 const person = new Person('Jack Black');
 
-const propertyChangeHandler = (source, changes) => {
-    console.log(changes); // {name: {oldValue: "Jack Black", newValue: "Tom Thumb"}}
+const propertyChangeHandler = (source, changes, priority) => {
+    console.log(changes, priority); // {name: {oldValue: "Jack Black", newValue: "Tom Thumb"}}, 0
 };
 
-person.addChangeListener(propertyChangeHandler);
+person.addChangeListener(propertyChangeHandler, 0);
 person.name = 'Tom Thumb';
 ```
 ##removeChangeListener()

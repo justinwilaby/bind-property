@@ -1,46 +1,57 @@
-const changeListeners = new WeakMap();
-const preCommitListeners = new WeakMap();
+const store = new WeakMap();
+
+function createStore(source){
+    const store = {
+        changeListeners: new Map(),
+        preCommitListeners: new Map(),
+        priorityQueue: []
+    };
+    store.set(source, store);
+    return store;
+}
 /**
  * The changeListeners listening for
  * property changes.
  *
- * @return Set
+ * @return Map
  */
 export function getChangeListeners() {
-    const self = this;
-    if (changeListeners.has(self)) {
-        return changeListeners.get(self);
-    }
-    const callbacks = new Set();
-    changeListeners.set(self, callbacks);
-
-    return callbacks;
+    const store = store.get(this) || createStore(this);
+    return store.changeListeners;
 }
 
 /**
  * The changeListeners listening for
  * pre commit property changes.
  *
- * @return Set
+ * @return Map
  */
 export function getPreCommitListeners() {
-    const self = this;
-    if (preCommitListeners.has(self)) {
-        return preCommitListeners.get(self);
-    }
-    const callbacks = new Set();
-    preCommitListeners.set(self, callbacks);
-
-    return callbacks;
+  const store = store.get(this) || createStore(this);
+  return store.preCommitListeners;
 }
+
+/**
+ * The changeListeners listening for
+ * pre commit property changes.
+ *
+ * @return Array
+ */
+export function getPriorityQueue(source) {
+  const store = store.get(source) || createStore(source);
+  return store.priorityQueue;
+}
+
 /**
  * Adds a function as a change listener.
  * The callback will be provided
  *
  * @param {function} callback The callback that is notified of property changes.
+ * @param {int} priority The priority of the callback. Larger number indicate lower priority
  */
-export function addChangeListener(callback) {
-    getChangeListeners.call(this).add(callback);
+export function addChangeListener(callback, priority = 0) {
+    getPriorityQueue(this).length = 0;
+    getChangeListeners.call(this).set(callback, priority);
 }
 
 /**
@@ -49,6 +60,7 @@ export function addChangeListener(callback) {
  * @param {function} callback The callback to remove
  */
 export function removeChangeListener(callback) {
+    getPriorityQueue(this).length = 0;
     getChangeListeners.call(this).delete(callback);
 }
 
@@ -57,9 +69,10 @@ export function removeChangeListener(callback) {
  * The callback will be provided
  *
  * @param {function} callback The callback that is notified of property changes.
+ * @param {int} priority The priority of the callback. Larger number indicate lower priority
  */
-export function addPreCommitListener(callback) {
-    getPreCommitListeners.call(this).add(callback);
+export function addPreCommitListener(callback, priority = 0) {
+    getPreCommitListeners.call(this).set(callback, priority);
 }
 
 /**
@@ -203,7 +216,42 @@ export function mixinNotifier(prototype) {
  * occurred on the context
  */
 function notify(source, changes) {
-    source.changeListeners.forEach(callback => {
-        callback(source, changes);
+    const queue = getPriorityQueue(source);
+    if (queue.length === 0){
+        buildPriorityQueue(queue);
+    }
+    queue.forEach(function(priority, callback){
+        callback(source, changes, priority);
     });
+}
+
+/**
+ * Builds the priority queue
+ *
+ * @param {Object} source The source object containing the priority queue
+ * @param {Array} queue The array that will contain the queue sorted by priority
+ */
+function buildPriorityQueue(source, queue) {
+  source.changeListeners.forEach(function(priority, callback) {
+    queue.push({priority, callback});
+  });
+  queue.sort(priorityComparator);
+}
+
+/**
+ * A basic sort comparator
+ *
+ * @param item1
+ * @param item2
+ * @returns {number}
+ */
+function priorityComparator(item1, item2){
+    const p1 = ~~item1.priority;
+    const p2 = ~~item2.priority;
+
+    if (p1 === p2){
+        return 0;
+    }
+
+    return p1 > p2 ? 1 : -1;
 }
