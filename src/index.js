@@ -1,4 +1,11 @@
-import {mixinNotifier, queueNotification, getChangeListeners} from './utils';
+import {
+    mixinNotifier,
+    queueNotification,
+    getChangeListeners,
+    getPriorityQueue,
+    getPreCommitListeners,
+    buildPriorityQueue
+} from './utils';
 
 const activeBindings = new WeakMap();
 
@@ -47,8 +54,12 @@ function getPropertyValues(context) {
 
 function notifyPreCommit(source, changes) {
     let canceled = false;
-    source.preCommitListeners.forEach(preCommitCallback => {
-        canceled = (preCommitCallback(source, changes, canceled) === false) || canceled;
+    const queue = getPriorityQueue(source, 'preCommitPriorityQueue');
+    if (queue.length === 0){
+        buildPriorityQueue(getPreCommitListeners.call(source), queue);
+    }
+    queue.forEach(function (item) {
+        canceled = (item.callback(source, changes, canceled, item.priority) === false) || canceled;
     });
     return canceled;
 }

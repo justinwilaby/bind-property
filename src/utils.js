@@ -1,12 +1,13 @@
-const store = new WeakMap();
+const shareStore = new WeakMap();
 
 function createStore(source){
     const store = {
         changeListeners: new Map(),
         preCommitListeners: new Map(),
+        preCommitPriorityQueue: [],
         priorityQueue: []
     };
-    store.set(source, store);
+    shareStore.set(source, store);
     return store;
 }
 /**
@@ -16,7 +17,7 @@ function createStore(source){
  * @return Map
  */
 export function getChangeListeners() {
-    const store = store.get(this) || createStore(this);
+    const store = shareStore.get(this) || createStore(this);
     return store.changeListeners;
 }
 
@@ -27,7 +28,7 @@ export function getChangeListeners() {
  * @return Map
  */
 export function getPreCommitListeners() {
-  const store = store.get(this) || createStore(this);
+  const store = shareStore.get(this) || createStore(this);
   return store.preCommitListeners;
 }
 
@@ -37,9 +38,9 @@ export function getPreCommitListeners() {
  *
  * @return Array
  */
-export function getPriorityQueue(source) {
-  const store = store.get(source) || createStore(source);
-  return store.priorityQueue;
+export function getPriorityQueue(source, type = 'priorityQueue') {
+  const store = shareStore.get(source) || createStore(source);
+  return store[type];
 }
 
 /**
@@ -72,6 +73,7 @@ export function removeChangeListener(callback) {
  * @param {int} priority The priority of the callback. Larger number indicate lower priority
  */
 export function addPreCommitListener(callback, priority = 0) {
+    getPriorityQueue(this, 'preCommitPriorityQueue').length = 0;
     getPreCommitListeners.call(this).set(callback, priority);
 }
 
@@ -81,6 +83,7 @@ export function addPreCommitListener(callback, priority = 0) {
  * @param {function} callback The callback to remove
  */
 export function removePreCommitListener(callback) {
+    getPriorityQueue(this, 'preCommitPriorityQueue').length = 0;
     getPreCommitListeners.call(this).delete(callback);
 }
 
@@ -218,21 +221,21 @@ export function mixinNotifier(prototype) {
 function notify(source, changes) {
     const queue = getPriorityQueue(source);
     if (queue.length === 0){
-        buildPriorityQueue(queue);
+        buildPriorityQueue(getChangeListeners.call(source), queue);
     }
-    queue.forEach(function(priority, callback){
-        callback(source, changes, priority);
+    queue.forEach(function(entry){
+      entry.callback(source, changes, entry.priority);
     });
 }
 
 /**
  * Builds the priority queue
  *
- * @param {Object} source The source object containing the priority queue
- * @param {Array} queue The array that will contain the queue sorted by priority
+ * @param {Map} callbackMap The Map containing the callbacks as the key and the priority as the value.
+ * @param {Array} queue The array that will contain the queue sorted by priority.
  */
-function buildPriorityQueue(source, queue) {
-  source.changeListeners.forEach(function(priority, callback) {
+export function buildPriorityQueue(callbackMap, queue) {
+  callbackMap.forEach(function(priority, callback) {
     queue.push({priority, callback});
   });
   queue.sort(priorityComparator);
