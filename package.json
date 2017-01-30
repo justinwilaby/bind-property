@@ -1,7 +1,7 @@
 {
   "author": "Justin Wilaby",
   "name": "bind-property",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A lightweight javascript library for enabling bindable properties on ES6 Classes.",
   "repository": "https://github.com/justinwilaby/bind-property",
   "license": "MIT",
