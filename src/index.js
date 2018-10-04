@@ -1,67 +1,22 @@
 import {
-    mixinNotifier,
-    queueNotification,
-    getChangeListeners,
-    getPriorityQueue,
-    getPreCommitListeners,
-    buildPriorityQueue
+  buildPriorityQueue,
+  getChangeListeners,
+  getPreCommitListeners,
+  getPriorityQueue,
+  mixinNotifier,
+  queueNotification
 } from './utils';
 
-const activeBindings = new WeakMap();
-
-function createGetter(property) {
-
-    return function () {
-        const self = this;
-        return getPropertyValues(self)[property];
-    }
-}
-
-function createSetter(property, descriptor) {
-
-    return function (newValue) {
-        const self = this;
-        const suspendNotifications = self.suspendNotifications;
-        let value = getPropertyValues(self)[property];
-        // Honor an existing setter if any
-        if (typeof descriptor.set === 'function') {
-            descriptor.set.call(self, newValue);
-            // Mutations? Casts?
-            if (descriptor.get) {
-                value = descriptor.get.call(self);
-            }
-        }
-        const oldValue = value;
-        if (value === newValue || notifyPreCommit(self, {[property]: {oldValue, newValue}})) {
-            return;
-        }
-        value = newValue;
-        if (suspendNotifications === false && !getChangeListeners.call(self).values().next().done) {
-            queueNotification(self, property, oldValue, newValue);
-        }
-        getPropertyValues(self)[property] = value;
-    }
-}
-
-function getPropertyValues(context) {
-    if (activeBindings.has(context)) {
-        return activeBindings.get(context);
-    }
-    const values = {};
-    activeBindings.set(context, values);
-    return values;
-}
-
 function notifyPreCommit(source, changes) {
-    let canceled = false;
-    const queue = getPriorityQueue(source, 'preCommitPriorityQueue');
-    if (queue.length === 0){
-        buildPriorityQueue(getPreCommitListeners.call(source), queue);
-    }
-    queue.forEach(function (item) {
-        canceled = (item.callback(source, changes, canceled, item.priority) === false) || canceled;
-    });
-    return canceled;
+  let canceled = false;
+  const queue = getPriorityQueue(source, 'preCommitPriorityQueue');
+  if (queue.length === 0) {
+    buildPriorityQueue(getPreCommitListeners.call(source), queue);
+  }
+  queue.forEach(function (item) {
+    canceled = ( item.callback(source, changes, canceled, item.priority) === false ) || canceled;
+  });
+  return canceled;
 }
 
 /**
@@ -69,28 +24,51 @@ function notifyPreCommit(source, changes) {
  * on the first write when "this" is an instance of the
  * class or prototype.
  *
- * @param {String} property The name of the property to bind
+ * @param {String} descriptor The Descriptor provided by the call to the decorator
  */
-export function bindable(property) {
-    return constructor => {
-        // Mixin
-        const prototype = constructor.prototype;
-        if (!activeBindings.has(prototype)) {
-            mixinNotifier(prototype);
-            activeBindings.set(prototype, true);
+export function bindable(descriptor) {
+  descriptor.finisher = function (clazz) {
+    // Mixin
+    mixinNotifier(clazz.prototype);
+  }
+  const {descriptor: propertyDescriptor, key} = descriptor;
+  descriptor.kind = 'method';
+  descriptor.placement = 'prototype';
+  descriptor.descriptor = ( function (initialValue, propertyDescriptor, property) {
+    let value = initialValue;
+    return {
+      get: ( propertyDescriptor.get || function () {
+        return value;
+      } ),
+      set: function (newValue) {
+        var self = this;
+        var suspendNotifications = self.suspendNotifications;
+        var oldValue = value;
+        // Honor an existing setter if any
+        if (typeof propertyDescriptor.set === 'function') {
+          propertyDescriptor.set.call(self, newValue);
+          // Mutations? Casts?
+          if (propertyDescriptor.get) {
+            value = propertyDescriptor.get.call(self);
+          }
         }
-
-        const descriptor = Object.getOwnPropertyDescriptor(prototype, property) || {};
-        // already bound - nothing to do
-        if (activeBindings.has(descriptor.get)) {
-            return;
+        if (value === newValue || notifyPreCommit(self, defineProperty({}, property, {
+          oldValue: oldValue,
+          newValue: newValue
+        }))) {
+          return;
         }
+        value = newValue;
+        if (suspendNotifications === false && !getChangeListeners.call(self).values().next().done) {
+          queueNotification(self, property, oldValue, newValue);
+        }
+      },
+      enumerable: propertyDescriptor.enumerable !== undefined ? propertyDescriptor.enumerable : true
+    }
+  } )(descriptor.initializer ? descriptor.initializer() : null, descriptor.descriptor, key);
 
-        Object.defineProperty(prototype, property, {
-            get: descriptor.get || createGetter(property),
-            set: createSetter(property, descriptor),
-            enumerable: descriptor.enumerable
-        });
-    };
+  delete descriptor.initializer;
+  return descriptor;
 }
-export {queueNotification};
+
+export { queueNotification };

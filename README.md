@@ -1,32 +1,30 @@
 # bind-property
-A small javascript library for enabling bindable properties. Property changes are immediately available on the source object after a change is made but notifications are queued via raf to prevent thrashing and increase performance.
+A small javascript library for enabling data binding on class properties. Property changes are immediately available on the source object after a change is made but notifications are queued via raf to prevent thrashing and increase performance.
 
 ## Basic Usage
 ### As a Decorator
-Using a transpiler that supports [ES6 decorators](https://github.com/wycats/javascript-decorators) and a browser that supports [WeakMap](http://kangax.github.io/compat-table/es6/#test-WeakMap) and [Set](http://kangax.github.io/compat-table/es6/#test-Set):
+Using a transpiler that supports [ES6 decorators](https://github.com/tc39/proposal-decorators/) and a browser that supports [WeakMap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) and [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set):
 ```js
 import { bindable } from 'bind-property';
 
-@bindable('firstName')
-@bindable('lastName')
-@bindable('age') // Setters are bindable
 class Person {
-    
-    gender;
-    firstName;
-    lastName;
+  
+    @bindable gender;
+    @bindable firstName;
+    @bindable lastName;
     
     get age(){
         return this._age;
     }
     
+    @bindable // Setters are bindable too
     set age(value){
         this._age = value;
     }
 }
 //...
 const person = new Person();
-person.addChangeListener(function (source, changes){
+person.addChangeListener((source, changes) => {
     console.log(changes); // {firstName: {oldValue: null, newValue: "Johnnie"}, lastName: {oldValue: null, newValue: "Walker"}, gender: {oldValue:null, newValue: "Male"}}
 });
 //...
@@ -40,11 +38,14 @@ person.gender = "Male"
 
 #Methods
 ##bindable()
-The **bindable** decorator is used to designate a property as bindable.  When a property is bindable, all instances of the class will track property changes and provide mechanisms for subscribing to receive notifications when values are changed.
+The **bindable** decorator is used to designate a property as bindable and mixin the infrastructure for listening for changes on the object.  
+When a property is bindable, all instances of the class will track property changes and provide mechanisms for subscribing 
+to receive notifications when values are changed.
 ```js
 import { binable } from 'bind-property';
-@bindable('data')
+
 class BinableClass{
+    @bindable data;
     constructor(data){
         this.data = data;
     }
@@ -53,32 +54,35 @@ class BinableClass{
 ### bindable() Syntax
 
 ```js
-@bindable(propertyName)
+@bindable myProperty;
 ```
 ### Parameters
-**propertyName**
-Required. The name of the property to make bindable.  If the prototype of the class does not contain the property specified, it is created.  If a default value for the property exists in the prototype, it will be honored.  Once a property is defined as bindable, subsequent changes to it's value will trigger a notification if at least once change listener has been added.
-
 ##addChangeListener()
-Required. The **addChangeListener()** method registers a callback to receive a notification of a property change on a class where at least 1 property is defined as bindable using the `@bindable` decorator.
+Required. The **addChangeListener()** method registers a callback to receive a notification of a property change on a 
+class where at least 1 property is defined as bindable using the `@bindable` decorator.
 ###addChangeListener() Syntax
 ```js
 bindableClassInstance.addChangeListener(callback, [priority]);
 ```
 ### Parameters
 **callback**  
-Required. The function to invoke when a bindable property has changed.  Adding the same callback more than once will not result in the callback being invoked multiple times for the same notification cycle.  Callbacks are invoked in the order in which they are added.
+Required. The function to invoke when a bindable property has changed. Adding the same callback more than once will not 
+result in the callback being invoked multiple times for the same notification cycle.  Callbacks are invoked in the order in which they are added.
 `callback` is invoked with **two arguments**:
 1. The `source` object upon which the property has changed.
-2. The `changes` object which contains keys representing the name of the property that has changed and values which contains the old and new values of the property. e.g. `{propertyName: {oldValue: theOldValue, newValue: theNewValue}`.
+2. The `changes` object which contains keys representing the name of the property that has changed and values which 
+contains the old and new values of the property. e.g. `{propertyName: {oldValue: theOldValue, newValue: theNewValue}`.
 **priority**
-Optional. An integer specifying the priority in which the specified callback is invoked. Higher values denote lower priority. Normally, callbacks are executed in the order in which they are registered or the bindable object. Specifying a priority allows the execution order to be changed regardless of the registration order.
+Optional. An integer specifying the priority in which the specified callback is invoked. Higher values denote lower 
+priority. Normally, callbacks are executed in the order in which they are registered or the bindable object. Specifying 
+a priority allows the execution order to be changed regardless of the registration order.
 ###Example
 ```js
 import { binable } from 'bind-property';
-@bindable('name')
+
 class Person {
-    name;
+    
+    @bindable name;
     
     constructor(name){
         this.name = name;
@@ -104,7 +108,8 @@ bindableClassInstance.removeChangeListener(callback);
 Required. The function to remove.
 
 ##addPreCommitListener()
-The **addPreCommitListener** method is used to register functions that are invoked before a property change has been committed.  If the function returns `false`, the property change is not made and notifications are canceled.
+The **addPreCommitListener** method is used to register functions that are invoked before a property change has been 
+committed. If the function returns `false`, the property change is aborted and notifications are never made.
 ###addPreCommitListener() Syntax
 ```js
 bindableClassInstance.addPreCommitListener(callback);
@@ -119,9 +124,10 @@ Required. The function to add that is invoked when the value of a binable proper
 ## Example
 ```js
 import { binable } from 'bind-property';
-@bindable('name')
+
 class Person {
-    name;
+    
+    @bindable name;
     
     constructor(name){
         this.name = name;
@@ -165,4 +171,5 @@ Read-only - an array containing all change listeners added by `addChangeListener
 Read-only - an array containing all pre commit listeners added by `addPreCommitListener`
 
 ##suspendNotifications
-When `true`, property change notifications are suspended and callbacks added using `addChangeListener` are not notified of property changes.  Note that callbacks added using `addPrecommitListener` are not affected.
+When `true`, property change notifications are suspended and callbacks added using `addChangeListener` are not notified 
+of property changes.  Note that callbacks added using `addPrecommitListener` are not affected.
