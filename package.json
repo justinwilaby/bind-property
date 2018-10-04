@@ -5,7 +5,7 @@
   "description": "A lightweight javascript library for enabling bindable properties on ES6 Classes.",
   "repository": "https://github.com/justinwilaby/bind-property",
   "license": "MIT",
-  "main": "build/js/bind-property.js",
+  "main": "build/bind-property.js",
   "files": [
     "build",
     "rollup.config.js"
