@@ -230,6 +230,8 @@
     return p1 > p2 ? 1 : -1;
   }
 
+  const propertyValues = new WeakMap();
+
   function notifyPreCommit(source, changes) {
     let canceled = false;
     const queue = getPriorityQueue(source, 'preCommitPriorityQueue');
@@ -264,16 +266,17 @@
     descriptor.kind = 'method';
     descriptor.placement = 'prototype';
 
-    descriptor.descriptor = function (initialValue, propertyDescriptor, property) {
-      let value = initialValue;
+    descriptor.descriptor = function (initializer = () => null, propertyDescriptor = {}, property) {
       return {
         get: propertyDescriptor.get || function () {
-          return value;
+          return getValuesMap.call(this, property, initializer)[property];
         },
         set: function (newValue) {
           const self = this;
           const suspendNotifications = self.suspendNotifications;
-          const oldValue = value; // Honor an existing setter if any
+          const valuesMap = getValuesMap.call(this, property, initializer)[property];
+          const oldValue = valuesMap[property];
+          let value; // Honor an existing setter if any
 
           if (typeof propertyDescriptor.set === 'function') {
             propertyDescriptor.set.call(self, newValue); // Mutations? Casts?
@@ -292,7 +295,7 @@
             return;
           }
 
-          value = newValue;
+          valuesMap[property] = newValue;
 
           if (suspendNotifications === false && !getChangeListeners.call(self).values().next().done) {
             queueNotification(self, property, oldValue, newValue);
@@ -300,10 +303,23 @@
         },
         enumerable: propertyDescriptor.enumerable !== undefined ? propertyDescriptor.enumerable : true
       };
-    }(descriptor.initializer ? descriptor.initializer() : null, descriptor.descriptor, key);
+    }(descriptor.initializer, descriptor.descriptor, key);
 
     delete descriptor.initializer;
     return descriptor;
+  }
+
+  function getValuesMap(property, initializer) {
+    let valuesMap = propertyValues.get(this);
+
+    if (!valuesMap) {
+      valuesMap = {
+        [property]: initializer()
+      };
+      propertyValues.set(this, valuesMap);
+    }
+
+    return valuesMap;
   }
 
   exports.bindable = bindable;
