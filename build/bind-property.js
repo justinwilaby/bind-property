@@ -248,7 +248,7 @@
    * on the first write when "this" is an instance of the
    * class or prototype.
    *
-   * @param {String} descriptor The Descriptor provided by the call to the decorator
+   * @param {Object} descriptor The Descriptor provided by the call to the decorator
    */
 
 
@@ -272,9 +272,9 @@
           return value;
         },
         set: function (newValue) {
-          var self = this;
-          var suspendNotifications = self.suspendNotifications;
-          var oldValue = value; // Honor an existing setter if any
+          const self = this;
+          const suspendNotifications = self.suspendNotifications;
+          const oldValue = value; // Honor an existing setter if any
 
           if (typeof propertyDescriptor.set === 'function') {
             propertyDescriptor.set.call(self, newValue); // Mutations? Casts?
@@ -284,10 +284,12 @@
             }
           }
 
-          if (value === newValue || notifyPreCommit(self, defineProperty({}, property, {
-            oldValue: oldValue,
-            newValue: newValue
-          }))) {
+          if (value === newValue || notifyPreCommit(self, {
+            [property]: {
+              oldValue,
+              newValue
+            }
+          })) {
             return;
           }
 
