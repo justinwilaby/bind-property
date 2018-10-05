@@ -31,7 +31,7 @@ export function bindable(descriptor) {
     // Mixin
     mixinNotifier(clazz.prototype);
   };
-  const {descriptor: propertyDescriptor, key} = descriptor;
+  const {key} = descriptor;
   descriptor.kind = 'method';
   descriptor.placement = 'prototype';
   descriptor.descriptor = ( function (initialValue, propertyDescriptor, property) {
@@ -52,7 +52,7 @@ export function bindable(descriptor) {
             value = propertyDescriptor.get.call(self);
           }
         }
-        if (value === newValue || notifyPreCommit(self, {[property]: {oldValue, newValue}})) {
+        if (value === newValue || notifyPreCommit(self, {[ property ]: {oldValue, newValue}})) {
           return;
         }
         value = newValue;
