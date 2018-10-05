@@ -259,7 +259,6 @@
     };
 
     const {
-      descriptor: propertyDescriptor,
       key
     } = descriptor;
     descriptor.kind = 'method';
