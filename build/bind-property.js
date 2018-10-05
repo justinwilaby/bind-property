@@ -134,20 +134,29 @@
       return;
     }
 
-    nextFrameId = requestAnimationFrame(() => {
-      const processingQueue = queue;
-      const processingChanges = changesByObject;
-      queue = new Set();
-      changesByObject = new Map();
-      nextFrameId = null; // nullify to enable queuing again
+    const processQueue = function () {
+      nextFrameId = requestAnimationFrame(function () {
+        const processingQueue = queue;
+        const processingChanges = changesByObject;
+        queue = new Set();
+        changesByObject = new Map();
+        nextFrameId = null; // nullify to enable queuing again
 
-      processingQueue.forEach(source => {
-        const {
-          changes
-        } = processingChanges.get(source);
-        notify(source, changes);
+        processingQueue.forEach(source => {
+          const {
+            changes
+          } = processingChanges.get(source);
+          notify(source, changes);
+        }); // More items could have been queued during processing
+        // Check for this and process them on the next frame
+
+        if (queue.length) {
+          processQueue();
+        }
       });
-    });
+    };
+
+    processQueue();
   }
   function mixinNotifier(prototype) {
     Object.defineProperties(prototype, {
