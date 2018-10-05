@@ -274,7 +274,7 @@
         set: function (newValue) {
           const self = this;
           const suspendNotifications = self.suspendNotifications;
-          const valuesMap = getValuesMap.call(this, property, initializer)[property];
+          const valuesMap = getValuesMap.call(this, property, initializer);
           const oldValue = valuesMap[property];
           let value; // Honor an existing setter if any
 
