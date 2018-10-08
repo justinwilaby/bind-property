@@ -194,7 +194,7 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
       });
       // More items could have been queued during processing
       // Check for this and process them on the next frame
-      if (queue.length) {
+      if (queue.size) {
         processQueue();
       }
       nextFrameId = null; // nullify to enable queuing again

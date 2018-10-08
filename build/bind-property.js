@@ -148,7 +148,7 @@
         }); // More items could have been queued during processing
         // Check for this and process them on the next frame
 
-        if (queue.length) {
+        if (queue.size) {
           processQueue();
         }
 
