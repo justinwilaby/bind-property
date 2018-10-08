@@ -187,7 +187,6 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
       const processingChanges = changesByObject;
       queue = new Set();
       changesByObject = new Map();
-      nextFrameId = null; // nullify to enable queuing again
 
       processingQueue.forEach(source => {
         const {changes} = processingChanges.get(source);
@@ -198,6 +197,7 @@ export function queueNotification(source, propertyName, oldValue, newValue) {
       if (queue.length) {
         processQueue();
       }
+      nextFrameId = null; // nullify to enable queuing again
     });
   };
 

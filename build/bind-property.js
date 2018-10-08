@@ -140,8 +140,6 @@
         const processingChanges = changesByObject;
         queue = new Set();
         changesByObject = new Map();
-        nextFrameId = null; // nullify to enable queuing again
-
         processingQueue.forEach(source => {
           const {
             changes
@@ -153,6 +151,8 @@
         if (queue.length) {
           processQueue();
         }
+
+        nextFrameId = null; // nullify to enable queuing again
       });
     };
 
